@@ -4,8 +4,10 @@ import {
   buildPresetType,
   get_builds,
   get_runs,
+  localRunType,
   run_start,
   run_status,
+  run_stop,
 } from "../api/bot"
 import { buildContext } from "./buildContext"
 import toast from "react-hot-toast"
@@ -21,8 +23,8 @@ export type runApiType = {
 }
 
 type RunContextType = {
-  runs: runApiType[]
-  setRuns: React.Dispatch<React.SetStateAction<runApiType[]>>
+  runs: localRunType[]
+  setRuns: React.Dispatch<React.SetStateAction<localRunType[]>>
   run: boolean
   setRun: React.Dispatch<React.SetStateAction<boolean>>
   runPending: boolean
@@ -50,14 +52,14 @@ export const RunProvider = ({ children }: { children: React.ReactNode }) => {
   const [run, setRun] = useState(false)
   const [runPending, setRunPending] = useState(false)
   const [runStatus, setRunStatus] = useState<buildApiStatusType>("stopped")
-  const [runs, setRuns] = useState<runApiType[]>([])
+  const [runs, setRuns] = useState<localRunType[]>([])
   const { setBuilds } = useContext(buildContext)
 
   const getRunInitial = async () => {
     const { data } = await get_runs()
     console.log(data)
     if (data.run) {
-      setRuns(data.run)
+      setRuns(data.run.map((run) => ({ ...run, type: "run" })))
     }
   }
 
@@ -74,51 +76,69 @@ export const RunProvider = ({ children }: { children: React.ReactNode }) => {
     setRunStatus("running")
     try {
       const { data: start_res } = await run_start({ duration, end_status, name })
-      setRuns((prev) => [...prev, start_res.run_info])
+      setRuns((prev) => [...prev, { ...start_res.run_info, type: "run" }])
       const { data: b } = await get_builds()
-      setBuilds((prev) => b.build)
+      setBuilds((prev) =>
+        b.build.map((build) => ({
+          ...build,
+          type: "build",
+          runs: build.runs.map((run) => ({ ...run, type: "run" })),
+        }))
+      )
       let flag = true
       let timer = 0
       const timerId = setInterval(() => timer++, 500)
       while (flag) {
-        if (timer > 120) {
+        if (timer > 9999) {
           setRunPending((prev) => false)
           setRun((prev) => false)
           setRunStatus("failed")
           toast.error("Run timeout error!")
           return (flag = false)
         }
-        const { data: status } = await run_status()
-        if (status !== "running") {
-          flag = false
-          const {
-            data: { run },
-          } = await get_runs()
-          setRuns((prev) => run)
-          const { data: b } = await get_builds()
-          setBuilds((prev) => b.build)
-          if (status === "completed") {
-            setRunPending((prev) => false)
-            setRunStatus("completed")
-            setRun((prev) => false)
-            toast.success("Run successfully closed!")
-          } else if (status === "failed") {
-            setRunPending((prev) => false)
-            setRunStatus("failed")
-            setRun((prev) => false)
-            toast.error("Run failed!")
-          }
-        } else {
-          const {
-            data: { run },
-          } = await get_runs()
-          setRuns((prev) => run)
-          const { data: b } = await get_builds()
-          setBuilds((prev) => b.build)
-          setRunPending((prev) => true)
-          setRunStatus("running")
-          setRun((prev) => true)
-        }
+        // const { data: status } = await run_status()
+        // if (status !== "running") {
+        //   flag = false
+        //   const {
+        //     data: { run },
+        //   } = await get_runs()
+        //   setRuns((prev) => run.map((run) => ({ ...run, type: "run" })))
+        //   const { data: b } = await get_builds()
+        //   setBuilds((prev) =>
+        //     b.build.map((build) => ({
+        //       ...build,
+        //       type: "build",
+        //       runs: build.runs.map((run) => ({ ...run, type: "run" })),
+        //     }))
+        //   )
+        //   if (status === "completed") {
+        //     setRunPending((prev) => false)
+        //     setRunStatus("completed")
+        //     setRun((prev) => false)
+        //     toast.success("Run successfully closed!")
+        //   } else if (status === "failed") {
+        //     setRunPending((prev) => false)
+        //     setRunStatus("failed")
+        //     setRun((prev) => false)
+        //     toast.error("Run failed!")
+        //   }
+        // } else {
+        //   const {
+        //     data: { run },
+        //   } = await get_runs()
+        //   setRuns((prev) => run.map((run) => ({ ...run, type: "run" })))
+        //   const { data: b } = await get_builds()
+        //   setBuilds((prev) =>
+        //     b.build.map((build) => ({
+        //       ...build,
+        //       type: "build",
+        //       runs: build.runs.map((run) => ({ ...run, type: "run" })),
+        //     }))
+        //   )
+        //   setRunPending((prev) => true)
+        //   setRunStatus("running")
+        //   setRun((prev) => true)
+        // }
         await new Promise((resolve) => setTimeout(resolve, 500))
       }
       clearInterval(timerId)
@@ -129,7 +149,13 @@ export const RunProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const runStop = () => {}
+  async function runStop() {
+    try {
+      const res = await run_stop()
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
   return (
     <runContext.Provider

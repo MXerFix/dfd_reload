@@ -37,7 +37,8 @@ export default {
         "border-darker": "var(--border-darker)",
         "status-green": "var(--status-green)",
         "f-card-trash": 'var(--flow-card-trash-btn)',
-        "contrast-border": "var(--contrast-border)"
+        "contrast-border": "var(--contrast-border)",
+        "chat": "var(--chat-background)",
       },
       borderRadius: {
         "node": "16px"

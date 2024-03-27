@@ -13,10 +13,13 @@ services:
     build:
       context: ./frontend
       dockerfile: dockerfile
+      args:
+      - REACT_APP_BACKEND_URL=http://backend:8000
+      - REACT_APP_BACKEND_WS_URL=ws://backend:8000
     ports:
       - 5173:5173
     environment:
-      - VITE_BASE_API_URL=http://0.0.0.0:8000
+      - VITE_BASE_API_URL=http://backend:8000
     volumes:
       - ./frontend:/app/frontend
     command: bash -c "cd ./frontend && bun install && bun run dev"

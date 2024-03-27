@@ -11,6 +11,7 @@ import ReactFlow, {
   Edge,
   Connection,
   NodeChange,
+  updateEdge,
 } from "reactflow"
 
 import "reactflow/dist/style.css"
@@ -33,6 +34,7 @@ import { useDisclosure } from "@nextui-org/react"
 import { workspaceContext } from "../contexts/workspaceContext"
 import Logs from "./Logs"
 import { UndoRedoProvider, undoRedoContext } from "../contexts/undoRedoContext"
+import Chat from "../components/chat/Chat"
 
 const nodeTypes = {
   default_node: DefaultNode,
@@ -90,6 +92,14 @@ export default function Flow() {
       onNodesChange(nds)
     },
     [onNodesChange]
+  )
+
+  const onEdgeUpdate = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      takeSnapshot()
+      setEdges((els) => updateEdge(oldEdge, newConnection, els))
+    },
+    [setEdges]
   )
 
   const onConnect = useCallback(
@@ -177,7 +187,7 @@ export default function Flow() {
   })
 
   return (
-    <div className='w-screen h-screen relative flex items-start bg-background'>
+    <div className='w-screen h-screen relative flex items-start bg-background overflow-x-hidden'>
       <SideBar />
       {transitions((style) => (
         <a.div
@@ -208,6 +218,7 @@ export default function Flow() {
             onDrop={onDrop}
             onNodesChange={onNodesChangeMod}
             onEdgesChange={onEdgesChange}
+            onEdgeUpdate={onEdgeUpdate}
             onNodeDragStart={() => takeSnapshot()}
             onConnect={onConnect}
             snapGrid={workspaceMode ? [24, 24] : [96, 96]}
@@ -230,6 +241,7 @@ export default function Flow() {
         </a.div>
       ))}
       <Logs />
+      <Chat />
     </div>
   )
 }

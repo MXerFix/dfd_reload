@@ -41,3 +41,13 @@ export const validateFlowName = (name: string, flows: FlowType[]) => {
   return !flows.some((flow) => flow.name === name) && name.length > 2
 }
 
+export const parseSearchParams = (searchParams: URLSearchParams): {
+  [key: string]: string
+} => {
+  if (!searchParams.toString()) return {}
+  return searchParams
+    .toString()
+    .split("&")
+    .map((s) => s.split("="))
+    .reduce((acc, [k, v]) => ({ ...acc, [k]: v }), {})
+}

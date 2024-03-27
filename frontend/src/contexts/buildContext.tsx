@@ -1,13 +1,23 @@
 import { createContext, useEffect, useState } from "react"
-import { buildApiStatusType, buildApiType, buildPresetType, build_start, build_status, build_stop, get_builds } from "../api/bot"
+import {
+  buildApiStatusType,
+  buildApiType,
+  buildPresetType,
+  build_start,
+  build_status,
+  build_stop,
+  get_builds,
+  localBuildType,
+} from "../api/bot"
 import { apiPresetType } from "../types/buildrunTypes"
 import toast from "react-hot-toast"
+import { useSearchParams } from "react-router-dom"
 
 type BuildContextType = {
   build: boolean
   setBuild: React.Dispatch<React.SetStateAction<boolean>>
-  builds: buildApiType[]
-  setBuilds: React.Dispatch<React.SetStateAction<buildApiType[]>>
+  builds: localBuildType[]
+  setBuilds: React.Dispatch<React.SetStateAction<localBuildType[]>>
   buildPending: boolean
   setBuildPending: React.Dispatch<React.SetStateAction<boolean>>
   buildStart: (options: buildPresetType) => void
@@ -27,7 +37,7 @@ export const buildContext = createContext({
   setBuildPending: () => {},
   buildStart: () => {},
   buildStop: () => {},
-  buildStatus: '',
+  buildStatus: "",
   setBuildStatus: () => {},
   logsPage: false,
   setLogsPage: () => {},
@@ -36,19 +46,26 @@ export const buildContext = createContext({
 export const BuildProvider = ({ children }: { children: React.ReactNode }) => {
   const [build, setBuild] = useState(false)
   const [buildPending, setBuildPending] = useState(false)
-  const [buildStatus, setBuildStatus] = useState<buildApiStatusType>('stopped')
-  const [logsPage, setLogsPage] = useState(false)
+  const [buildStatus, setBuildStatus] = useState<buildApiStatusType>("stopped")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [logsPage, setLogsPage] = useState(searchParams.get('logs_page') === 'opened')
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [builds, setBuilds] = useState<any[]>([])
+  const [builds, setBuilds] = useState<localBuildType[]>([])
 
   const getBuildInitial = async () => {
     const { data } = await get_builds()
     console.log(data)
     if (data.build) {
-      setBuilds(data.build)
-      if (data.build[data.build.length - 1].status === 'completed') {
+      setBuilds(
+        data.build.map((build) => ({
+          ...build,
+          type: "build",
+          runs: build.runs.map((run) => ({ ...run, type: "run" })),
+        }))
+      )
+      if (data.build[data.build.length - 1].status === "completed") {
         setBuild(true)
-        setBuildStatus('completed')
+        setBuildStatus("completed")
       }
     }
   }
@@ -58,23 +75,31 @@ export const BuildProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   const buildStart = async ({
-    end_status = 'completed',
-    name = 'default',
+    end_status = "completed",
+    name = "default",
     duration = 3,
   }: buildPresetType) => {
     setBuildPending((prev) => true)
-    setBuildStatus('running')
+    setBuildStatus("running")
     try {
       const start_res = (await build_start({ duration, end_status, name })).data
-      setBuilds((prev) => [...prev, start_res.build_info])
+
+      setBuilds((prev) => [
+        ...prev,
+        {
+          ...start_res.build_info,
+          type: "build",
+          runs: start_res.build_info.runs.map((run) => ({ ...run, type: "run" })),
+        },
+      ])
       let flag = true
       let timer = 0
       const timerId = setInterval(() => timer++, 1000)
       while (flag) {
         if (timer > 15) {
           setBuild((prev) => false)
-          setBuildStatus('failed')
-          toast.error('Build timeout!')
+          setBuildStatus("failed")
+          toast.error("Build timeout!")
           await build_stop()
           return (flag = false)
         }
@@ -82,18 +107,24 @@ export const BuildProvider = ({ children }: { children: React.ReactNode }) => {
         console.log(status_res)
         const status = status_res.data
         console.log(status)
-        if (status !== 'running') {
+        if (status !== "running") {
           flag = false
           const { build } = (await get_builds()).data
-          setBuilds((prev) => build)
-          if (status === 'completed') {
-            setBuildStatus('completed')
+          setBuilds((prev) =>
+            build.map((build) => ({
+              ...build,
+              type: "build",
+              runs: build.runs.map((run) => ({ ...run, type: "run" })),
+            }))
+          )
+          if (status === "completed") {
+            setBuildStatus("completed")
             setBuild((prev) => true)
-            toast.success('Build successfully!')
-          } else if (status === 'failed') {
-            setBuildStatus('failed')
+            toast.success("Build successfully!")
+          } else if (status === "failed") {
+            setBuildStatus("failed")
             setBuild((prev) => false)
-            toast.error('Build failed!')
+            toast.error("Build failed!")
           }
         }
         await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -105,9 +136,7 @@ export const BuildProvider = ({ children }: { children: React.ReactNode }) => {
       setBuildPending((prev) => false)
     }
   }
-  const buildStop = () => {
-  }
-  
+  const buildStop = () => {}
 
   return (
     <buildContext.Provider
@@ -123,7 +152,7 @@ export const BuildProvider = ({ children }: { children: React.ReactNode }) => {
         builds,
         setBuilds,
         logsPage,
-        setLogsPage
+        setLogsPage,
       }}>
       {children}
     </buildContext.Provider>

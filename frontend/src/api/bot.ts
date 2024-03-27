@@ -26,6 +26,11 @@ export type runApiType = {
   logs_path?: string
 }
 
+export interface localRunType extends runApiType {
+  type: 'run'
+}
+
+
 export type buildApiType = {
   id: number
   status: buildApiStatusType
@@ -33,7 +38,11 @@ export type buildApiType = {
   logs: string[]
   preset_name: string
   timestamp: number
-  runs: runApiType[]
+  runs: localRunType[]
+}
+
+export interface localBuildType extends buildApiType {
+  type: 'build'
 }
 
 type buildsResponseType = {

@@ -20,6 +20,8 @@
     --bg-secondary: #f8fafc;
     --fg-secondary: #333;
 
+    --chat-background: #ebf5fa;
+
     --node: #fff;
     --node-header: #f8fafc;
 
@@ -72,6 +74,7 @@
       --foreground: #f2f2f2;
       --bg-secondary: #121212;
       --fg-secondary: #f2f2f2;
+      --chat-background: #363535;
 
       --node: #363535;
       --node-header: #212121;
